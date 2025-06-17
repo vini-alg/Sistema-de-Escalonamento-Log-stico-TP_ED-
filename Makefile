@@ -10,7 +10,7 @@ SOURCES = $(wildcard $(SRCDIR)/*.cpp)
 # Lista de arquivos objeto gerados a partir dos fontes
 OBJECTS = $(patsubst $(SRCDIR)/%.cpp, $(OBJDIR)/%.o, $(SOURCES))
 # Nome do executável
-EXECUTABLE = $(BINDIR)/tp1.out
+EXECUTABLE = $(BINDIR)/tp2.out
 
 all: $(BINDIR) $(OBJDIR) $(EXECUTABLE)
 
