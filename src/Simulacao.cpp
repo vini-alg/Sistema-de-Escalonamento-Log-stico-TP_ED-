@@ -67,6 +67,7 @@ void Simulacao::carregar_dados(const std::string& nome_arquivo) {
     int tempo, id, origem, destino;
     for (int i = 0; i < num_pacotes; ++i) {
         arquivo >> tempo >> str_pac >> id >> str_org >> origem >> str_dst >> destino;
+        id--;
         pacotes.adicionar(new Pacote(id, tempo, origem, destino));
     }
 }
