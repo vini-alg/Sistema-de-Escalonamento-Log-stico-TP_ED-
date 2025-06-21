@@ -15,6 +15,7 @@ enum class EstadoPacote {
 class Pacote {
 public:
     int id;
+    int display_id = id % 100;
     int tempo_postagem;
     int armazem_origem;
     int armazem_destino;

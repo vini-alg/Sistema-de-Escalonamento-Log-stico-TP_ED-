@@ -57,6 +57,12 @@ private:
      */
     void limpar_memoria();
 
+    /**
+     * @brief Verifica se todos os pacotes já foram entregues.
+     * @return True se todos os pacotes foram entregues, False caso contrário.
+     */
+    bool todos_pacotes_entregues() const;
+
 public:
     /**
      * @brief Construtor da classe Simulacao.
