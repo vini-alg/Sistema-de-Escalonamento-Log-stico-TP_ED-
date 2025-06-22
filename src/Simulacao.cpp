@@ -174,55 +174,74 @@ void Simulacao::processar_evento_chegada(EventoChegada* evento) {
     // Verifica se o armazém atual é o destino final do pacote.
     if (evento->id_armazem == pacote->armazem_destino) {
         pacote->atualizar_estado(EstadoPacote::ENTREGUE);
-        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_atual << " pacote " << std::setw(3) << std::setfill('0') << pacote->id << " entregue em " << std::setw(3) << std::setfill('0') << evento->id_armazem << std::endl;
+        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_atual << " pacote " << std::setw(3) << std::setfill('0') << pacote->display_id << " entregue em " << std::setw(3) << std::setfill('0') << evento->id_armazem << std::endl;
     } else {
         // Se não for o destino final, armazena o pacote na seção correta.
         Armazem* armazem = armazens[evento->id_armazem];
         armazem->armazenar_pacote(pacote);
-        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_atual << " pacote " << std::setw(3) << std::setfill('0') << pacote->id << " armazenado em " << std::setw(3) << std::setfill('0') << evento->id_armazem << " na secao " << std::setw(3) << std::setfill('0') << pacote->obter_proximo_destino() << std::endl;
+        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_atual << " pacote " << std::setw(3) << std::setfill('0') << pacote->display_id << " armazenado em " << std::setw(3) << std::setfill('0') << evento->id_armazem << " na secao " << std::setw(3) << std::setfill('0') << pacote->obter_proximo_destino() << std::endl;
     }
 }
 
 // Processa um evento de transporte de pacotes.
-void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
-    Armazem* armazem_origem = armazens[evento->id_armazem_origem];
-    Pilha<Pacote*>& secao = armazem_origem->obter_secao(evento->id_armazem_destino);
+bool Simulacao::todos_pacotes_entregues() const {
+    for (int i = 0; i < pacotes.tamanho(); ++i) {
+        if (pacotes[i]->estado_atual != EstadoPacote::ENTREGUE) {
+            return false;
+        }
+    }
+    return true;
+}
 
-    // Se a seção de destino estiver vazia, apenas reagenda o transporte.
-    if (secao.esta_vazia()) {
-        escalonador->insere_evento(new EventoTransporte(tempo_atual + transporte_config->intervalo, evento->id_armazem_origem, evento->id_armazem_destino));
+// Processa um evento de transporte de pacotes.
+void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
+    if (todos_pacotes_entregues()) {
         return;
     }
 
-    // Desempilha todos os pacotes da seção para um vetor temporário para poder ordená-los.
-    VetorDinamico<Pacote*> pacotes_movidos;
-    while (!secao.esta_vazia()) {
-        pacotes_movidos.adicionar(secao.desempilha());
+    double tempo_atual = evento->tempo;
+    if (!this->transporte_config) return;
+
+    Pilha<Pacote*>& secao = armazens[evento->id_armazem_origem]->obter_secao(evento->id_armazem_destino);
+    
+    if (secao.esta_vazia()) {
+        if (!todos_pacotes_entregues()) {
+            escalonador->insere_evento(new EventoTransporte(tempo_atual + this->transporte_config->intervalo, evento->id_armazem_origem, evento->id_armazem_destino));
+        }
+        return;
     }
 
-    // Ordena os pacotes por tempo de postagem (Bubble Sort) para priorizar os mais antigos.
-    for (int i = 0; i < pacotes_movidos.tamanho() - 1; i++) {
-        for (int j = 0; j < pacotes_movidos.tamanho() - i - 1; j++) {
-            if (pacotes_movidos[j]->tempo_postagem > pacotes_movidos[j + 1]->tempo_postagem) {
-                Pacote* temp = pacotes_movidos[j];
-                pacotes_movidos[j] = pacotes_movidos[j+1];
-                pacotes_movidos[j+1] = temp;
+    VetorDinamico<Pacote*> pacotes_na_pilha;
+    while (!secao.esta_vazia()) {
+        pacotes_na_pilha.adicionar(secao.desempilha());
+    }
+
+    VetorDinamico<Pacote*> pacotes_ordenados = pacotes_na_pilha;
+    
+    for (int i = 0; i < pacotes_ordenados.tamanho() - 1; i++) {
+        for (int j = 0; j < pacotes_ordenados.tamanho() - i - 1; j++) {
+            if (pacotes_ordenados[j]->tempo_postagem > pacotes_ordenados[j + 1]->tempo_postagem) {
+                Pacote* temp = pacotes_ordenados[j];
+                pacotes_ordenados[j] = pacotes_ordenados[j + 1];
+                pacotes_ordenados[j + 1] = temp;
             }
         }
     }
 
-    // Seleciona os pacotes a serem transportados, respeitando a capacidade do veículo.
     VetorDinamico<Pacote*> para_transportar;
-    int transportados_count = 0;
-    for (int i = 0; i < pacotes_movidos.tamanho() && transportados_count < transporte_config->capacidade; ++i) {
-        para_transportar.adicionar(pacotes_movidos[i]);
-        transportados_count++;
+    for (int i = 0; i < pacotes_ordenados.tamanho() && para_transportar.tamanho() < this->transporte_config->capacidade; ++i) {
+        para_transportar.adicionar(pacotes_ordenados[i]);
     }
 
     double tempo_op = tempo_atual;
-    // Simula a remoção de pacotes da pilha, um a um, aplicando o custo de remoção.
-    for (int i = pacotes_movidos.tamanho() - 1; i >= 0; i--) {
-        Pacote* p = pacotes_movidos[i];
+    VetorDinamico<Pacote*> pacotes_a_reempilhar;
+    VetorDinamico<double> tempos_reempilhar;
+
+    for (int i = 0; i < pacotes_na_pilha.tamanho(); i++) {
+        Pacote* p = pacotes_na_pilha[i];
+        tempo_op += this->transporte_config->custo_remocao;
+        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_op << " pacote " << std::setw(3) << std::setfill('0') << p->display_id << " removido de " << std::setw(3) << std::setfill('0') << evento->id_armazem_origem << " na secao " << std::setw(3) << std::setfill('0') << evento->id_armazem_destino << std::endl;
+
         bool sera_transportado = false;
         for (int j = 0; j < para_transportar.tamanho(); ++j) {
             if (p->id == para_transportar[j]->id) {
@@ -231,25 +250,28 @@ void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
             }
         }
 
-        tempo_op += transporte_config->custo_remocao;
-        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_op << " pacote " << std::setw(3) << std::setfill('0') << p->id << " removido de " << std::setw(3) << std::setfill('0') << evento->id_armazem_origem << " na secao " << std::setw(3) << std::setfill('0') << evento->id_armazem_destino << std::endl;
-
         if (sera_transportado) {
             p->atualizar_estado(EstadoPacote::REMOVIDO_PARA_TRANSPORTE);
         } else {
-            // Pacotes não transportados são rearmazenados na seção.
-            secao.empilha(p);
-            std::cout << std::setw(7) << std::setfill('0') << (int)tempo_op << " pacote " << std::setw(3) << std::setfill('0') << p->id << " rearmazenado em " << std::setw(3) << std::setfill('0') << evento->id_armazem_origem << " na secao " << std::setw(3) << std::setfill('0') << evento->id_armazem_destino << std::endl;
+            pacotes_a_reempilhar.adicionar(p);
+            tempos_reempilhar.adicionar(tempo_op);
         }
     }
 
-    // Agenda a chegada futura dos pacotes que foram transportados.
     for (int i = 0; i < para_transportar.tamanho(); ++i) {
         Pacote* p = para_transportar[i];
-        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_op << " pacote " << std::setw(3) << std::setfill('0') << p->id << " em transito de " << std::setw(3) << std::setfill('0') << evento->id_armazem_origem << " para " << std::setw(3) << std::setfill('0') << evento->id_armazem_destino << std::endl;
-        escalonador->insere_evento(new EventoChegada(tempo_op + transporte_config->latencia, p->id, evento->id_armazem_destino));
+        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_op << " pacote " << std::setw(3) << std::setfill('0') << p->display_id << " em transito de " << std::setw(3) << std::setfill('0') << evento->id_armazem_origem << " para " << std::setw(3) << std::setfill('0') << evento->id_armazem_destino << std::endl;
+        escalonador->insere_evento(new EventoChegada(tempo_op + this->transporte_config->latencia, p->id, evento->id_armazem_destino));
     }
 
-    // Agenda o próximo evento de transporte para esta mesma rota.
-    escalonador->insere_evento(new EventoTransporte(tempo_atual + transporte_config->intervalo, evento->id_armazem_origem, evento->id_armazem_destino));
+    for (int i = pacotes_a_reempilhar.tamanho() - 1; i >= 0; i--) {
+        Pacote* p = pacotes_a_reempilhar[i];
+        double tempo_rearmazenamento = tempos_reempilhar[i];
+        secao.empilha(p);
+        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_rearmazenamento << " pacote " << std::setw(3) << std::setfill('0') << p->display_id << " rearmazenado em " << std::setw(3) << std::setfill('0') << evento->id_armazem_origem << " na secao " << std::setw(3) << std::setfill('0') << evento->id_armazem_destino << std::endl;
+    }
+
+    if (!todos_pacotes_entregues()) {
+        escalonador->insere_evento(new EventoTransporte(tempo_atual + this->transporte_config->intervalo, evento->id_armazem_origem, evento->id_armazem_destino));
+    }
 }
