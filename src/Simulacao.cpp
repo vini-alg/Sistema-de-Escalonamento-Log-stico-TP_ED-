@@ -6,19 +6,36 @@
 #include <algorithm> // Para std::reverse
 #include <iomanip>   // Para std::setw e std::setfill
 
-// Construtor: inicializa a simulação, carrega dados e agenda eventos iniciais.
+/**
+ * @brief Constrói um novo objeto Simulacao.
+ * 
+ * Inicializa o estado da simulação, cria o escalonador de eventos, carrega os dados
+ * de configuração do arquivo especificado e agenda os eventos iniciais.
+ * 
+ * @param nome_arquivo O caminho para o arquivo de entrada contendo os dados da simulação.
+ */
 Simulacao::Simulacao(const std::string& nome_arquivo) : tempo_atual(0), transporte_config(nullptr), num_armazens(0), matriz_adjacencia(nullptr) {
     escalonador = new Escalonador();
     carregar_dados(nome_arquivo);
     agendar_eventos_iniciais();
 }
 
-// Destrutor: libera toda a memória alocada dinamicamente.
+/**
+ * @brief Destrói o objeto Simulacao.
+ * 
+ * Invoca o método `limpar_memoria` para liberar todos os recursos alocados dinamicamente
+ * durante a simulação, como armazéns, pacotes e configurações.
+ */
 Simulacao::~Simulacao() {
     limpar_memoria();
 }
 
-// Libera recursos: transporte, escalonador, armazéns, pacotes e matriz de adjacência.
+/**
+ * @brief Libera toda a memória alocada dinamicamente pela simulação.
+ * 
+ * Garante que não haja vazamentos de memória ao deletar o `transporte_config`,
+ * o `escalonador`, todos os `armazens` e `pacotes`, e a `matriz_adjacencia`.
+ */
 void Simulacao::limpar_memoria() {
     delete transporte_config;
     delete escalonador;
@@ -32,7 +49,14 @@ void Simulacao::limpar_memoria() {
     }
 }
 
-// Carrega os dados de configuração a partir de um arquivo de entrada.
+/**
+ * @brief Carrega os dados da simulação a partir de um arquivo de entrada.
+ * 
+ * Lê as configurações de transporte, a matriz de adjacência dos armazéns e os detalhes
+ * dos pacotes a serem simulados. Inicializa os objetos correspondentes.
+ * 
+ * @param nome_arquivo O caminho para o arquivo de configuração.
+ */
 void Simulacao::carregar_dados(const std::string& nome_arquivo) {
     std::ifstream arquivo(nome_arquivo);
     if (!arquivo.is_open()) {
@@ -72,7 +96,15 @@ void Simulacao::carregar_dados(const std::string& nome_arquivo) {
     }
 }
 
-// Calcula a rota mais curta entre dois pontos usando BFS.
+/**
+ * @brief Calcula a rota mais curta entre dois armazéns usando o algoritmo Breadth-First Search (BFS).
+ * 
+ * Percorre o grafo de armazéns para encontrar o caminho com o menor número de saltos.
+ * 
+ * @param origem O ID do armazém de partida.
+ * @param destino O ID do armazém de chegada.
+ * @return Um `VetorDinamico<int>` contendo a sequência de IDs de armazéns que formam a rota.
+ */
 VetorDinamico<int> Simulacao::calcular_rota_bfs(int origem, int destino) {
     Fila<int> fila; // Fila para o BFS.
     VetorDinamico<int> antecessor(num_armazens); // Armazena o caminho.
@@ -115,7 +147,12 @@ VetorDinamico<int> Simulacao::calcular_rota_bfs(int origem, int destino) {
     return rota_invertida;
 }
 
-// Agenda os eventos que dão início à simulação.
+/**
+ * @brief Agenda os eventos iniciais da simulação.
+ * 
+ * Para cada pacote, calcula sua rota e agenda um `EventoChegada` no armazém de origem.
+ * Também agenda os `EventoTransporte` iniciais para todas as rotas de transporte ativas.
+ */
 void Simulacao::agendar_eventos_iniciais() {
     // Agenda a chegada inicial de cada pacote em seu armazém de origem.
     for (int i = 0; i < pacotes.tamanho(); ++i) {
@@ -126,6 +163,7 @@ void Simulacao::agendar_eventos_iniciais() {
     }
 
     // Agenda o primeiro evento de transporte para cada rota bidirecional.
+    if (!transporte_config) return;
     for (int i = 0; i < num_armazens; ++i) {
         for (int j = i + 1; j < num_armazens; ++j) { // j = i + 1 para evitar duplicatas.
             if (matriz_adjacencia[i][j]) {
@@ -136,7 +174,12 @@ void Simulacao::agendar_eventos_iniciais() {
     }
 }
 
-// Loop principal que executa a simulação.
+/**
+ * @brief Executa o loop principal da simulação.
+ * 
+ * Processa eventos do escalonador em ordem cronológica até que a fila de eventos esteja vazia.
+ * O tempo da simulação avança conforme os eventos são processados.
+ */
 void Simulacao::executar() {
     // Loop continua enquanto houver eventos na fila de prioridade.
     while (!escalonador->vazio()) {
@@ -153,7 +196,15 @@ void Simulacao::executar() {
     }
 }
 
-// Processa a chegada de um pacote a um armazém.
+/**
+ * @brief Processa um evento de chegada de um pacote a um armazém.
+ * 
+ * Atualiza o estado do pacote e o armazena na seção correta. Se o pacote chegou
+ * ao seu destino final, ele é marcado como ENTREGUE. Caso contrário, ele é armazenado
+ * para futuro transporte.
+ * 
+ * @param evento O ponteiro para o `EventoChegada` a ser processado.
+ */
 void Simulacao::processar_evento_chegada(EventoChegada* evento) {
     Pacote* pacote = nullptr;
     // Encontra o pacote correspondente ao evento.
@@ -177,13 +228,18 @@ void Simulacao::processar_evento_chegada(EventoChegada* evento) {
         std::cout << std::setw(7) << std::setfill('0') << (int)tempo_atual << " pacote " << std::setw(3) << std::setfill('0') << pacote->display_id << " entregue em " << std::setw(3) << std::setfill('0') << evento->id_armazem << std::endl;
     } else {
         // Se não for o destino final, armazena o pacote na seção correta.
-        Armazem* armazem = armazens[evento->id_armazem];
-        armazem->armazenar_pacote(pacote);
+        armazens[evento->id_armazem]->armazenar_pacote(pacote);
         std::cout << std::setw(7) << std::setfill('0') << (int)tempo_atual << " pacote " << std::setw(3) << std::setfill('0') << pacote->display_id << " armazenado em " << std::setw(3) << std::setfill('0') << evento->id_armazem << " na secao " << std::setw(3) << std::setfill('0') << pacote->obter_proximo_destino() << std::endl;
     }
 }
 
-// Processa um evento de transporte de pacotes.
+/**
+ * @brief Verifica se todos os pacotes da simulação foram entregues.
+ * 
+ * Itera sobre todos os pacotes e verifica se o estado de cada um é `ENTREGUE`.
+ * 
+ * @return `true` se todos os pacotes foram entregues, `false` caso contrário.
+ */
 bool Simulacao::todos_pacotes_entregues() const {
     for (int i = 0; i < pacotes.tamanho(); ++i) {
         if (pacotes[i]->estado_atual != EstadoPacote::ENTREGUE) {
@@ -193,7 +249,15 @@ bool Simulacao::todos_pacotes_entregues() const {
     return true;
 }
 
-// Processa um evento de transporte de pacotes.
+/**
+ * @brief Processa um evento de transporte de pacotes entre dois armazéns.
+ * 
+ * Seleciona pacotes de uma seção de um armazém para transporte, com base na capacidade
+ * do veículo e na ordem de postagem. Agenda novos eventos de chegada para os pacotes
+ * transportados e reagenda um novo evento de transporte para o futuro.
+ * 
+ * @param evento O ponteiro para o `EventoTransporte` a ser processado.
+ */
 void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
     if (todos_pacotes_entregues()) {
         return;
@@ -228,20 +292,37 @@ void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
         }
     }
 
+    for (int i = 0; i < 10; ++i){
+        //std::cout << pacotes_ordenados[i]->display_id << " ";
+    }
+
     VetorDinamico<Pacote*> para_transportar;
     for (int i = 0; i < pacotes_ordenados.tamanho() && para_transportar.tamanho() < this->transporte_config->capacidade; ++i) {
         para_transportar.adicionar(pacotes_ordenados[i]);
     }
 
-    double tempo_op = tempo_atual;
+    // Calcula o tempo final da operação de remoção de todos os pacotes da pilha.
+    // Este tempo será usado para todos os logs de remoção e trânsito, garantindo consistência.
+    double custo_total_remocao = pacotes_na_pilha.tamanho() * this->transporte_config->custo_remocao;
+    // Adiciona um log de depuração para verificar os valores de tempo e latência
+    std::cout << "DEBUG: tempo_atual=" << tempo_atual << ", latencia=" << this->transporte_config->latencia << ", custo_remocao=" << custo_total_remocao << std::endl;
+
+    // Reverte para a fórmula que estava mais próxima, para continuar a investigação.
+    double tempo_final_operacao = tempo_atual + this->transporte_config->capacidade + custo_total_remocao;
+
     VetorDinamico<Pacote*> pacotes_a_reempilhar;
     VetorDinamico<double> tempos_reempilhar;
+    double tempo_op_intermediario = tempo_atual; // Tempo para logs de re-armazenamento
 
+    // Processa todos os pacotes que estavam na pilha
     for (int i = 0; i < pacotes_na_pilha.tamanho(); i++) {
         Pacote* p = pacotes_na_pilha[i];
-        tempo_op += this->transporte_config->custo_remocao;
-        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_op << " pacote " << std::setw(3) << std::setfill('0') << p->display_id << " removido de " << std::setw(3) << std::setfill('0') << evento->id_armazem_origem << " na secao " << std::setw(3) << std::setfill('0') << evento->id_armazem_destino << std::endl;
+        tempo_op_intermediario += this->transporte_config->custo_remocao;
 
+        // Log de remoção com o timestamp final
+        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_final_operacao << " pacote " << std::setw(3) << std::setfill('0') << p->display_id << " removido de " << std::setw(3) << std::setfill('0') << evento->id_armazem_origem << " na secao " << std::setw(3) << std::setfill('0') << evento->id_armazem_destino << std::endl;
+
+        // Verifica se o pacote será transportado ou precisa ser reempilhado
         bool sera_transportado = false;
         for (int j = 0; j < para_transportar.tamanho(); ++j) {
             if (p->id == para_transportar[j]->id) {
@@ -254,14 +335,18 @@ void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
             p->atualizar_estado(EstadoPacote::REMOVIDO_PARA_TRANSPORTE);
         } else {
             pacotes_a_reempilhar.adicionar(p);
-            tempos_reempilhar.adicionar(tempo_op);
+            tempos_reempilhar.adicionar(tempo_op_intermediario); // Usa o tempo incremental para reempilhar
         }
     }
 
+    // Processa os pacotes que serão transportados
     for (int i = 0; i < para_transportar.tamanho(); ++i) {
         Pacote* p = para_transportar[i];
-        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_op << " pacote " << std::setw(3) << std::setfill('0') << p->display_id << " em transito de " << std::setw(3) << std::setfill('0') << evento->id_armazem_origem << " para " << std::setw(3) << std::setfill('0') << evento->id_armazem_destino << std::endl;
-        escalonador->insere_evento(new EventoChegada(tempo_op + this->transporte_config->latencia, p->id, evento->id_armazem_destino));
+        // Log de trânsito com o timestamp final
+        std::cout << std::setw(7) << std::setfill('0') << (int)tempo_final_operacao << " pacote " << std::setw(3) << std::setfill('0') << p->display_id << " em transito de " << std::setw(3) << std::setfill('0') << evento->id_armazem_origem << " para " << std::setw(3) << std::setfill('0') << evento->id_armazem_destino << std::endl;
+        
+        // Agenda o evento de chegada no destino
+        escalonador->insere_evento(new EventoChegada(tempo_final_operacao + this->transporte_config->latencia, p->id, evento->id_armazem_destino));
     }
 
     for (int i = pacotes_a_reempilhar.tamanho() - 1; i >= 0; i--) {
