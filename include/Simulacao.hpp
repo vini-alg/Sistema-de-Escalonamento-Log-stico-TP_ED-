@@ -20,6 +20,7 @@ private:
     VetorDinamico<Pacote*> pacotes; ///< Vetor dinâmico com ponteiros para todos os pacotes da simulação.
     bool** matriz_adjacencia; ///< Matriz que representa as rotas de transporte entre os armazéns.
     Escalonador* escalonador; ///< Fila de prioridade (min-heap) que gerencia os eventos futuros.
+    std::string last_line_buffer; ///< Buffer para a última linha de log para evitar nova linha no final.
 
     /**
      * @brief Lê o arquivo de entrada e inicializa o estado da simulação.
@@ -62,6 +63,12 @@ private:
      * @return True se todos os pacotes foram entregues, False caso contrário.
      */
     bool todos_pacotes_entregues() const;
+
+    /**
+     * @brief Imprime uma linha de log, gerenciando o buffer para a última linha.
+     * @param line A linha a ser impressa.
+     */
+    void print_log_line(const std::string& line);
 
 public:
     /**
