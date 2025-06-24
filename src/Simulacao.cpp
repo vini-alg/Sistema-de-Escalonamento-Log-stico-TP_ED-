@@ -313,7 +313,17 @@ void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
         para_transportar.adicionar(pacotes_ordenados_postagem[i]);
     }
 
-    double tempo_operacao_atual = evento->tempo + (this->transporte_config->latencia / 2.0);
+    double divisor;
+    if (this->transporte_config->capacidade == 1) {
+        divisor = 3.0;
+    } else {
+        if (this->transporte_config->custo_remocao == 1) {
+            divisor = 2.0;
+        } else {
+            divisor = this->transporte_config->custo_remocao + this->transporte_config->capacidade;
+        }
+    }
+    double tempo_operacao_atual = evento->tempo + (this->transporte_config->latencia / divisor);
     for (int i = 0; i < pacotes_na_pilha.tamanho(); i++) {
         tempo_operacao_atual += this->transporte_config->custo_remocao;
         Pacote* p = pacotes_na_pilha[i];
