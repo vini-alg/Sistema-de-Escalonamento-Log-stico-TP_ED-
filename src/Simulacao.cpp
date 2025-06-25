@@ -297,22 +297,6 @@ void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
         pacotes_na_pilha.adicionar(secao.desempilha());
     }
 
-    VetorDinamico<Pacote*> pacotes_ordenados_postagem = pacotes_na_pilha;
-    for (int i = 0; i < pacotes_ordenados_postagem.tamanho() - 1; i++) {
-        for (int j = 0; j < pacotes_ordenados_postagem.tamanho() - i - 1; j++) {
-            if (pacotes_ordenados_postagem[j]->tempo_postagem > pacotes_ordenados_postagem[j + 1]->tempo_postagem) {
-                Pacote* temp = pacotes_ordenados_postagem[j];
-                pacotes_ordenados_postagem[j] = pacotes_ordenados_postagem[j + 1];
-                pacotes_ordenados_postagem[j + 1] = temp;
-            }
-        }
-    }
-
-    VetorDinamico<Pacote*> para_transportar;
-    for (int i = 0; i < pacotes_ordenados_postagem.tamanho() && para_transportar.tamanho() < this->transporte_config->capacidade; ++i) {
-        para_transportar.adicionar(pacotes_ordenados_postagem[i]);
-    }
-
     double divisor;
     if (this->transporte_config->capacidade == 1) {
         divisor = 3.0;
@@ -337,14 +321,9 @@ void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
 
     double tempo_final_operacao = tempo_operacao_atual;
 
-    for (int i = 0; i < para_transportar.tamanho() - 1; i++) {
-        for (int j = 0; j < para_transportar.tamanho() - i - 1; j++) {
-            if (para_transportar[j]->display_id > para_transportar[j + 1]->display_id) {
-                Pacote* temp = para_transportar[j];
-                para_transportar[j] = para_transportar[j + 1];
-                para_transportar[j + 1] = temp;
-            }
-        }
+    VetorDinamico<Pacote*> para_transportar;
+    for (int i = pacotes_na_pilha.tamanho() - 1; i >= 0 && para_transportar.tamanho() < this->transporte_config->capacidade; --i) {
+        para_transportar.adicionar(pacotes_na_pilha[i]);
     }
 
     for (int i = 0; i < para_transportar.tamanho(); ++i) {
@@ -372,16 +351,6 @@ void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
         if (!foi_transportado) {
             secao.empilha(p);
             pacotes_a_reempilhar_log.adicionar(p);
-        }
-    }
-
-    for (int i = 0; i < pacotes_a_reempilhar_log.tamanho() - 1; i++) {
-        for (int j = 0; j < pacotes_a_reempilhar_log.tamanho() - i - 1; j++) {
-            if (pacotes_a_reempilhar_log[j]->display_id > pacotes_a_reempilhar_log[j + 1]->display_id) {
-                Pacote* temp = pacotes_a_reempilhar_log[j];
-                pacotes_a_reempilhar_log[j] = pacotes_a_reempilhar_log[j + 1];
-                pacotes_a_reempilhar_log[j + 1] = temp;
-            }
         }
     }
 

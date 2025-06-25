@@ -33,6 +33,19 @@ public:
     ~Pilha();
 
     /**
+     * @brief Construtor de cópia.
+     * @param outro A pilha a ser copiada.
+     */
+    Pilha(const Pilha<T>& outro);
+
+    /**
+     * @brief Operador de atribuição de cópia.
+     * @param outro A pilha a ser copiada.
+     * @return Uma referência para esta pilha após a cópia.
+     */
+    Pilha<T>& operator=(const Pilha<T>& outro);
+
+    /**
      * @brief Adiciona um elemento ao topo da pilha (push).
      * @param elemento O elemento a ser adicionado.
      */

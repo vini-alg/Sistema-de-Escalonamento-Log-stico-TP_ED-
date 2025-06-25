@@ -52,7 +52,13 @@ public:
      * @brief Adiciona um elemento ao final do vetor.
      * @param elemento O elemento a ser adicionado.
      */
-    void adicionar(const T& elemento);
+    void adicionar(T elemento);
+
+    /**
+     * @brief Adiciona um elemento no início do vetor.
+     * @param elemento O elemento a ser adicionado.
+     */
+    void push_front(T elemento);
 
     /**
      * @brief Acessa um elemento no índice especificado.
@@ -80,6 +86,11 @@ public:
      * @brief Remove todos os elementos do vetor e o redefine para seu estado inicial.
      */
     void limpar();
+
+    /**
+     * @brief Ordena o vetor por ID usando o algoritmo de insertion sort.
+     */
+    void ordenar_por_id();
 };
 
 /**
@@ -151,7 +162,7 @@ void VetorDinamico<T>::redimensionar() {
  * @param elemento O elemento a ser adicionado.
  */
 template <typename T>
-void VetorDinamico<T>::adicionar(const T& elemento) {
+void VetorDinamico<T>::adicionar(T elemento) {
     if (tamanho_atual == capacidade) {
         redimensionar();
     }
@@ -204,6 +215,39 @@ void VetorDinamico<T>::limpar() {
     capacidade = 10;
     tamanho_atual = 0;
     dados = new T[capacidade];
+}
+
+/**
+ * @brief Ordena o vetor de ponteiros para objetos que possuem um membro 'display_id'.
+ */
+template <typename T>
+void VetorDinamico<T>::ordenar_por_id() {
+    for (int i = 1; i < tamanho_atual; i++) {
+        T chave = dados[i];
+        int j = i - 1;
+        while (j >= 0 && dados[j]->id > chave->id) {
+            dados[j + 1] = dados[j];
+            j = j - 1;
+        }
+        dados[j + 1] = chave;
+    }
+}
+
+/**
+ * @brief Adiciona um elemento no início do vetor.
+ * @tparam T O tipo de dado do vetor.
+ * @param elemento O elemento a ser adicionado.
+ */
+template <typename T>
+void VetorDinamico<T>::push_front(T elemento) {
+    if (tamanho_atual == capacidade) {
+        redimensionar();
+    }
+    for (int i = tamanho_atual; i > 0; --i) {
+        dados[i] = dados[i - 1];
+    }
+    dados[0] = elemento;
+    tamanho_atual++;
 }
 
 #endif // VETOR_DINAMICO_HPP
