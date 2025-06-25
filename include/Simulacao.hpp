@@ -22,6 +22,8 @@ private:
     Escalonador* escalonador; ///< Fila de prioridade (min-heap) que gerencia os eventos futuros.
     std::string last_line_buffer; ///< Buffer para a última linha de log para evitar nova linha no final.
 
+    int tempo_inicial;
+    bool first_time = true;
     /**
      * @brief Lê o arquivo de entrada e inicializa o estado da simulação.
      * @param nome_arquivo Caminho para o arquivo de configuração.

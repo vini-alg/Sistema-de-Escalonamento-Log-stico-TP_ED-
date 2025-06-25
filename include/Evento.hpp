@@ -111,4 +111,18 @@ public:
     }
 };
 
+/**
+ * @struct ComparadorEventos
+ * @brief Functor de comparação para ordenar eventos em uma fila de prioridade.
+ *
+ * Compara dois ponteiros de Evento com base em suas chaves de prioridade.
+ * Aquele com a menor chave de prioridade é considerado "maior" para
+ * uso em uma fila de prioridade de mínimo (min-heap).
+ */
+struct ComparadorEventos {
+    bool operator()(const Evento* a, const Evento* b) const {
+        return a->obter_chave_prioridade() > b->obter_chave_prioridade();
+    }
+};
+
 #endif // EVENTO_HPP

@@ -32,6 +32,7 @@ public:
     EstadoPacote estado_atual;      ///< O estado atual do pacote no processo de entrega.
     VetorDinamico<int> rota;        ///< A sequência de armazéns que o pacote deve visitar.
     int proximo_armazem_index;      ///< Índice do próximo armazém na rota.
+    bool first_time = true;
 
     // Estatísticas
     double tempo_total_armazenado;      ///< Tempo total que o pacote passou armazenado.

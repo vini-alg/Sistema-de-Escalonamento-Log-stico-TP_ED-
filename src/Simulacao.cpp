@@ -102,6 +102,7 @@ void Simulacao::carregar_dados(const std::string& nome_arquivo) {
         id--;
         pacotes.adicionar(new Pacote(id, tempo, origem, destino));
     }
+    this->tempo_inicial = pacotes[0]->tempo_postagem;
 }
 
 /**
@@ -175,8 +176,8 @@ void Simulacao::agendar_eventos_iniciais() {
     for (int i = 0; i < num_armazens; ++i) {
         for (int j = i + 1; j < num_armazens; ++j) { // j = i + 1 para evitar duplicatas.
             if (matriz_adjacencia[i][j]) {
-                escalonador->insere_evento(new EventoTransporte(transporte_config->intervalo, i, j));
-                escalonador->insere_evento(new EventoTransporte(transporte_config->intervalo, j, i));
+                escalonador->insere_evento(new EventoTransporte(this->tempo_inicial + transporte_config->intervalo, i, j));
+                escalonador->insere_evento(new EventoTransporte(this->tempo_inicial + transporte_config->intervalo, j, i));
             }
         }
     }
@@ -196,7 +197,6 @@ void Simulacao::executar() {
 
         Evento* evento = escalonador->retira_proximo_evento();
         tempo_atual = evento->tempo; // Avança o relógio da simulação.
-
         // Direciona o evento para a função de processamento correta.
         if (evento->tipo == TipoEvento::CHEGADA_PACOTE) {
             processar_evento_chegada(static_cast<EventoChegada*>(evento));
@@ -297,17 +297,7 @@ void Simulacao::processar_evento_transporte(EventoTransporte* evento) {
         pacotes_na_pilha.adicionar(secao.desempilha());
     }
 
-    double divisor;
-    if (this->transporte_config->capacidade == 1) {
-        divisor = 3.0;
-    } else {
-        if (this->transporte_config->custo_remocao == 1) {
-            divisor = 2.0;
-        } else {
-            divisor = this->transporte_config->custo_remocao + this->transporte_config->capacidade;
-        }
-    }
-    double tempo_operacao_atual = evento->tempo + (this->transporte_config->latencia / divisor);
+    double tempo_operacao_atual = evento->tempo;
     for (int i = 0; i < pacotes_na_pilha.tamanho(); i++) {
         tempo_operacao_atual += this->transporte_config->custo_remocao;
         Pacote* p = pacotes_na_pilha[i];
